@@ -1,0 +1,18 @@
+name = "ddos-overwatch"
+main = "src/index.js"
+compatibility_date = "2026-04-08"
+workers_dev = false
+preview_urls = false
+
+
+[vars]
+ACCOUNT_ID = "YOUR_CLOUDFLARE_ACCOUNT_ID"
+ACCOUNT_TAG = "YOUR_CLOUDFLARE_ACCOUNT_TAG"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true

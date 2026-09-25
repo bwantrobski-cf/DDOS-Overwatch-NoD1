@@ -1,0 +1,3 @@
+ACCOUNT_ID=your_cloudflare_account_id
+ACCOUNT_TAG=your_cloudflare_account_tag
+BEARER_TOKEN=your_cloudflare_api_token
