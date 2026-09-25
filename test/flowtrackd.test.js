@@ -185,6 +185,8 @@ test("renderUi orders Magic Transit, Network Flow, FlowtrackD, then Usage", () =
   assert.ok(networkFlowIndex < flowtrackdIndex);
   assert.ok(flowtrackdIndex < usageIndex);
   assert.match(html, /id="tab-flowtrackd"/);
+  assert.doesNotMatch(html, /formatRecentAlertDisplayTime/);
+  assert.match(html, /function formatDisplayTime/);
   assert.doesNotMatch(html, /Analytics \(D1\)|analytics-d1|recentWebhook/i);
   assert.match(html, /Recent DDoS Events from Cloudflare GraphQL/);
   assert.match(html, /SYN flood protection rules/);

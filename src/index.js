@@ -8942,7 +8942,7 @@ Load a preset or run a query to view schema results.</pre
 
         const modifiedColumn = {
           label: "Modified",
-          value: (item) => formatRecentAlertDisplayTime(item.modified_on),
+          value: (item) => formatDisplayTime(item.modified_on),
         };
         const actionColumn = {
           label: "Actions",
@@ -10737,7 +10737,7 @@ Load a preset or run a query to view schema results.</pre
         }
       }
 
-      function formatRecentDdosDisplayTime(value) {
+      function formatDisplayTime(value) {
         const text = toDisplayValue(value);
 
         if (text === "—") {
@@ -10752,7 +10752,7 @@ Load a preset or run a query to view schema results.</pre
         renderDataTable("recentDdosEventsTable", rows, [
           {
             label: "Time",
-            value: (entry) => formatRecentDdosDisplayTime(entry.datetimeIso),
+            value: (entry) => formatDisplayTime(entry.datetimeIso),
           },
           {
             label: "Attack ID",
