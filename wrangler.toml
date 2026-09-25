@@ -7,7 +7,9 @@ preview_urls = false
 
 [vars]
 ACCOUNT_ID = "YOUR_CLOUDFLARE_ACCOUNT_ID"
-ACCOUNT_TAG = "YOUR_CLOUDFLARE_ACCOUNT_TAG"
+
+# Set API_BEARER as an encrypted Worker secret:
+# npx wrangler secret put API_BEARER
 
 [observability]
 [observability.logs]

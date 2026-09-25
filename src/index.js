@@ -393,7 +393,6 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/api/config") {
         const accountId = (env.ACCOUNT_ID ?? "").trim();
-        const accountTag = (env.ACCOUNT_TAG ?? "").trim() || accountId;
         const token = resolveBearerToken(env);
         let accountName = "";
         let accountLookupError = "";
@@ -408,10 +407,9 @@ export default {
 
         return jsonResponse({
           accountId,
-          accountTag,
           accountName,
           hasBearerToken: Boolean(token),
-          bearerSource: (env.BEARER_TOKEN ?? "").trim() ? "BEARER_TOKEN" : (env.BEARER ?? "").trim() ? "BEARER" : "",
+          bearerSource: token ? "API_BEARER" : "",
           accountLookupError,
         });
       }
@@ -651,29 +649,14 @@ function requireBearerToken(env) {
   const token = resolveBearerToken(env);
 
   if (!token) {
-    throw new HttpError(
-      500,
-      "Missing bearer token secret. Set `BEARER_TOKEN` (or legacy `BEARER`).",
-    );
+    throw new HttpError(500, "Missing bearer token secret. Set `API_BEARER`.");
   }
 
   return token;
 }
 
 function resolveBearerToken(env) {
-  const primaryToken = (env.BEARER_TOKEN ?? "").trim();
-
-  if (primaryToken) {
-    return primaryToken;
-  }
-
-  const legacyToken = (env.BEARER ?? "").trim();
-
-  if (legacyToken) {
-    return legacyToken;
-  }
-
-  return "";
+  return (env.API_BEARER ?? "").trim();
 }
 
 async function fetchWithTimeout(url, init = {}, timeoutMs = UPSTREAM_FETCH_TIMEOUT_MS) {
@@ -2358,8 +2341,8 @@ function renderUi() {
               <span id="envAccountName" class="config-item-value">Loading...</span>
             </div>
             <div class="config-item">
-              <span class="config-item-label">Account tag</span>
-              <span id="envAccountTag" class="config-item-value">Loading...</span>
+              <span class="config-item-label">Account ID</span>
+              <span id="envAccountId" class="config-item-value">Loading...</span>
             </div>
           </div>
         </div>
@@ -3046,7 +3029,7 @@ Load a preset or run a query to view schema results.</pre
       const endpointEl = document.getElementById("responseEndpoint");
       const bodyEl = document.getElementById("responseBody");
       const envAccountName = document.getElementById("envAccountName");
-      const envAccountTag = document.getElementById("envAccountTag");
+      const envAccountId = document.getElementById("envAccountId");
       const recentDdosStatus = document.getElementById("recentDdosStatus");
       const bgpOverviewStatus = document.getElementById("bgpOverviewStatus");
       const overviewTunnelHealthStatus = document.getElementById("overviewTunnelHealthStatus");
@@ -5415,7 +5398,7 @@ Load a preset or run a query to view schema results.</pre
         try {
           const filters = readDdosGraphFilters();
           const datasetConfig = getDdosGraphDatasetConfig(filters.dataset);
-          const accountTag = await resolveApiAccountTag();
+          const accountTag = await resolveGraphqlAccountId();
           const candidateFields = await loadDdosGraphDatetimeFieldCandidates(filters.dataset);
           const unknownFieldWarnings = [];
           let lastPayload = null;
@@ -6321,7 +6304,7 @@ Load a preset or run a query to view schema results.</pre
 
         try {
           const filters = readOverviewTunnelHealthFilters();
-          const accountTag = await resolveApiAccountTag();
+          const accountTag = await resolveGraphqlAccountId();
           const candidateFields = await loadTunnelHealthDatetimeFieldCandidates();
           const unknownFieldWarnings = [];
           let lastPayload = null;
@@ -6449,16 +6432,16 @@ Load a preset or run a query to view schema results.</pre
         }
       }
 
-      async function resolveApiAccountTag() {
-        const existingTag = (envAccountTag?.textContent ?? "").trim();
+      async function resolveGraphqlAccountId() {
+        const existingAccountId = (envAccountId?.textContent ?? "").trim();
 
         if (
-          existingTag &&
-          !existingTag.startsWith("(") &&
-          !existingTag.toLowerCase().startsWith("loading") &&
-          !existingTag.toLowerCase().startsWith("failed")
+          existingAccountId &&
+          !existingAccountId.startsWith("(") &&
+          !existingAccountId.toLowerCase().startsWith("loading") &&
+          !existingAccountId.toLowerCase().startsWith("failed")
         ) {
-          return existingTag;
+          return existingAccountId;
         }
 
         const configResponse = await callApi("/api/config", {
@@ -6473,24 +6456,20 @@ Load a preset or run a query to view schema results.</pre
           typeof configResponse.payload !== "object" ||
           Array.isArray(configResponse.payload)
         ) {
-          throw new Error("Unable to resolve Account Tag for Analytics API query.");
+          throw new Error("Unable to resolve the Account ID for the GraphQL query.");
         }
 
-        const payload = configResponse.payload;
-        const accountTagRaw =
-          typeof payload.accountTag === "string"
-            ? payload.accountTag
-            : typeof payload.accountId === "string"
-              ? payload.accountId
-              : "";
-        const accountTag = accountTagRaw.trim();
+        const accountId =
+          typeof configResponse.payload.accountId === "string"
+            ? configResponse.payload.accountId.trim()
+            : "";
 
-        if (!accountTag) {
-          throw new Error("Account Tag is unavailable. Set ACCOUNT_TAG or ACCOUNT_ID.");
+        if (!accountId) {
+          throw new Error("Account ID is unavailable. Set ACCOUNT_ID.");
         }
 
-        envAccountTag.textContent = accountTag;
-        return accountTag;
+        envAccountId.textContent = accountId;
+        return accountId;
       }
 
       function initializeApiAnalyticsDefaults() {
@@ -7166,7 +7145,7 @@ Load a preset or run a query to view schema results.</pre
       async function runApiAnalyticsQuery() {
         try {
           const filters = readApiAnalyticsFilters();
-          const accountTag = await resolveApiAccountTag();
+          const accountTag = await resolveGraphqlAccountId();
           const requestPayload = buildMagicTransitTunnelBandwidthRequest(filters, accountTag);
 
           const filterSnapshot = buildApiFilterSnapshot(
@@ -7520,7 +7499,7 @@ Load a preset or run a query to view schema results.</pre
 
         try {
           const timeRange = buildUsageTimeRange();
-          const accountTag = await resolveApiAccountTag();
+          const accountTag = await resolveGraphqlAccountId();
           setHintMessage(usageStatus, "Loading GRE and IPsec tunnel inventory...");
           const inventory = await loadMagicTransitTunnelInventoryNames();
           const windows = buildUsageQueryWindows(timeRange, inventory.tunnelNames.length);
@@ -10732,19 +10711,15 @@ Load a preset or run a query to view schema results.</pre
 
           const accountName =
             config && typeof config.accountName === "string" ? config.accountName.trim() : "";
-          const accountTag =
-            config && typeof config.accountTag === "string"
-              ? config.accountTag.trim()
-              : config && typeof config.accountId === "string"
-                ? config.accountId.trim()
-                : "";
+          const accountId =
+            config && typeof config.accountId === "string" ? config.accountId.trim() : "";
 
           envAccountName.textContent = accountName || "(name unavailable)";
-          envAccountTag.textContent = accountTag || "(not set)";
+          envAccountId.textContent = accountId || "(not set)";
 
           setOutput(true, "Loaded", "GET /api/config", {
             accountName: accountName || "(name unavailable)",
-            accountTag: accountTag || "(not set)",
+            accountId: accountId || "(not set)",
             hasBearerToken: Boolean(config.hasBearerToken),
             bearerSource: typeof config.bearerSource === "string" ? config.bearerSource : "",
           });
@@ -10757,7 +10732,7 @@ Load a preset or run a query to view schema results.</pre
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           envAccountName.textContent = "Failed to load";
-          envAccountTag.textContent = "Failed to load";
+          envAccountId.textContent = "Failed to load";
           setClientError("Unable to load config: " + message);
         }
       }
@@ -10816,7 +10791,7 @@ Load a preset or run a query to view schema results.</pre
               endIso: new Date(endMs).toISOString(),
             },
           };
-          const accountTag = await resolveApiAccountTag();
+          const accountTag = await resolveGraphqlAccountId();
           const candidateFields = await loadDdosGraphDatetimeFieldCandidates(filters.dataset);
           let rows = [];
           let usedDatetimeField = "";
@@ -11153,7 +11128,7 @@ Load a preset or run a query to view schema results.</pre
               ? event.message
               : "Unknown UI runtime error.";
         envAccountName.textContent = "Failed to load";
-        envAccountTag.textContent = "Failed to load";
+        envAccountId.textContent = "Failed to load";
         setClientError("UI runtime error: " + message);
       });
 

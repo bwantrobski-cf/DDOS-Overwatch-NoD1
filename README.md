@@ -9,7 +9,7 @@ This public version has no D1 database binding or storage dependency. Recent DDo
   - Magic Network Monitoring Rules (`/accounts/{account_id}/mnm/rules`)
   - GRE tunnels, IPsec tunnels, routes, and interconnects under `/accounts/{account_id}/magic/*`
 
-The Worker never hard-codes the bearer token. It reads a secret from `BEARER_TOKEN`.
+The Worker never hard-codes the bearer token. It reads a secret from `API_BEARER`.
 
 ## 1) Prerequisites
 
@@ -19,20 +19,27 @@ The Worker never hard-codes the bearer token. It reads a secret from `BEARER_TOK
 
 ## 2) Configure account + secret
 
-Replace the generic `ACCOUNT_ID` and `ACCOUNT_TAG` placeholders in `wrangler.toml` under `[vars]`. `ACCOUNT_TAG` is used by GraphQL; if omitted in another deployment configuration, the Worker falls back to `ACCOUNT_ID`.
+Replace the generic `ACCOUNT_ID` placeholder in `wrangler.toml` under `[vars]` with your Cloudflare Account ID. This is the 32-character account identifier shown in the Cloudflare dashboard.
 
-Set the API token as a Worker secret:
+Cloudflare GraphQL names this value `accountTag`, but it is the same Account ID—not a separate setting. The Worker uses `ACCOUNT_ID` for both REST API paths and GraphQL account filters.
+
+Set `API_BEARER` as an encrypted Worker secret. Do not add the token value to `wrangler.toml` or commit it to the repository.
+
+To configure it in the Cloudflare dashboard, open the Worker, go to **Settings → Variables and Secrets**, add `API_BEARER`, select **Secret**, and enter the Cloudflare API token as its value.
+
+Alternatively, set the same Worker secret with Wrangler:
 
 ```bash
-npx wrangler secret put BEARER_TOKEN
+npx wrangler secret put API_BEARER
 ```
 
-For local dev only, you can also use `.dev.vars` (do not commit it):
+The Worker receives this binding as `env.API_BEARER`.
+
+For local development only, use `.dev.vars` (do not commit it):
 
 ```bash
 ACCOUNT_ID=your_cloudflare_account_id
-ACCOUNT_TAG=your_cloudflare_account_tag
-BEARER_TOKEN=your_cloudflare_api_token
+API_BEARER=your_cloudflare_api_token
 ```
 
 ## 3) Run locally

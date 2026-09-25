@@ -113,6 +113,17 @@ test("parseAdvancedTcpProtectionStatus handles supported Cloudflare response sha
   assert.equal(parseAdvancedTcpProtectionStatus({ result: {} }), null);
 });
 
+test("Worker exposes one Account ID for REST and GraphQL configuration", async () => {
+  const response = await worker.fetch(
+    new Request("https://worker.example/api/config"),
+    { ACCOUNT_ID: "account-123" },
+  );
+  const payload = await response.json();
+
+  assert.equal(payload.accountId, "account-123");
+  assert.equal("accountTag" in payload, false);
+});
+
 test("Worker proxies validated FlowtrackD requests to the account-scoped Cloudflare endpoint", async () => {
   const originalFetch = globalThis.fetch;
   let upstreamRequest;
@@ -140,7 +151,7 @@ test("Worker proxies validated FlowtrackD requests to the account-scoped Cloudfl
       }),
       {
         ACCOUNT_ID: "account-123",
-        BEARER_TOKEN: "test-token",
+        API_BEARER: "test-token",
       },
     );
 
